@@ -87,7 +87,7 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
 
     return (
         <>
-            <Head title="Burnboard - Claude Code Leaderboard" />
+            <Head title="Burnboard - AI Coding Telemetry" />
             <div className="min-h-screen bg-background">
                 {/* Header */}
                 <header className="site-header">
@@ -120,10 +120,10 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                     {/* Hero Section */}
                     <div className="mb-8 text-center">
                         <h1 className="mb-3 font-mono text-3xl font-bold tracking-tight md:text-4xl">
-                            <span className="text-burn">Claude Code</span> Leaderboard
+                            <span className="text-burn">AI Coding</span> Telemetry
                         </h1>
                         <p className="text-muted-foreground">
-                            Who's burning the most tokens?
+                            Track your token usage across Claude Code, OpenCode, and more
                         </p>
                     </div>
 
@@ -317,10 +317,10 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                         <div className="mt-8 rounded-lg border border-border bg-card p-6 text-center">
                             <Terminal className="mx-auto mb-3 h-8 w-8 text-burn" />
                             <h2 className="mb-2 font-mono text-lg font-semibold">
-                                Join the Leaderboard
+                                Start Tracking
                             </h2>
                             <p className="mb-4 text-sm text-muted-foreground">
-                                Run this command to connect your Claude Code telemetry
+                                Run this command to connect your AI coding telemetry
                             </p>
                             <div className="mx-auto flex max-w-lg items-center gap-2">
                                 <div className="code-block flex-1 text-left">
