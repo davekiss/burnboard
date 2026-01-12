@@ -17,6 +17,7 @@ class IngestController extends Controller
         private BadgeService $badgeService,
         private LevelService $levelService
     ) {}
+
     // Map OTLP metric names to our internal types
     private const METRIC_MAP = [
         'claude_code.token.usage' => [
@@ -307,6 +308,53 @@ class IngestController extends Controller
             'recorded_at' => $recordedAt,
             'created_at' => $now,
             'updated_at' => $now,
+        ];
+    }
+
+    /**
+     * Process level progression and badge awards after metrics are recorded.
+     *
+     * @return array{level_ups: array, tier_ups: array, badges_earned: array, current_level: array|null}
+     */
+    private function processAchievements(User $user, array $metricsInserted): array
+    {
+        // Calculate total tokens from inserted metrics
+        $tokenTypes = [
+            Metric::TYPE_TOKENS_INPUT,
+            Metric::TYPE_TOKENS_OUTPUT,
+            Metric::TYPE_TOKENS_CACHE_READ,
+            Metric::TYPE_TOKENS_CACHE_CREATION,
+        ];
+
+        $totalNewTokens = 0;
+        foreach ($metricsInserted as $metric) {
+            if (in_array($metric['metric_type'], $tokenTypes)) {
+                $totalNewTokens += (int) $metric['value'];
+            }
+        }
+
+        // Update level with new tokens
+        $levelResult = ['level_ups' => [], 'tier_ups' => [], 'current' => null];
+        if ($totalNewTokens > 0) {
+            $levelResult = $this->levelService->addTokens($user, $totalNewTokens);
+        }
+
+        // Check for badge awards
+        $newBadges = $this->badgeService->checkAndAwardBadges($user);
+
+        return [
+            'level_ups' => $levelResult['level_ups'],
+            'tier_ups' => $levelResult['tier_ups'],
+            'badges_earned' => array_map(fn ($item) => [
+                'slug' => $item['badge']->slug,
+                'name' => $item['badge']->name,
+                'description' => $item['badge']->description,
+                'category' => $item['badge']->category,
+                'tier' => $item['badge']->tier,
+                'icon' => $item['badge']->icon,
+                'is_hidden' => $item['badge']->is_hidden,
+            ], $newBadges),
+            'current_level' => $levelResult['current'] ?? null,
         ];
     }
 }
