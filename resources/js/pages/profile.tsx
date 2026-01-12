@@ -263,12 +263,11 @@ export default function Profile({
                                         <MetricLabel metric="lines_changed" label="Lines Changed" className="section-header mb-0" />
                                         <Code2 className="h-4 w-4 text-muted-foreground" />
                                     </div>
-                                    <div className="value-large">
-                                        <span className="text-positive">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="value-large text-positive">
                                             +{formatTokens(stats.lines_added)}
                                         </span>
-                                        <span className="mx-1 text-muted-foreground">/</span>
-                                        <span className="text-negative">
+                                        <span className="value-small text-negative">
                                             -{formatTokens(stats.lines_removed)}
                                         </span>
                                     </div>
