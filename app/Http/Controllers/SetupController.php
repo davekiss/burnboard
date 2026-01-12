@@ -98,7 +98,7 @@ echo ""
 if grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.zshrc 2>/dev/null || grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.bashrc 2>/dev/null; then
     echo -e "\${YELLOW}Looks like you're already set up!\${NC}"
     echo ""
-    read -p "Do you want to reconfigure? (y/N) " -n 1 -r
+    read -p "Do you want to reconfigure? (y/N) " -n 1 -r < /dev/tty
     echo
     if [[ ! \$REPLY =~ ^[Yy]\$ ]]; then
         echo -e "\${GREEN}No changes made. Happy coding!\${NC}"
