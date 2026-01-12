@@ -67,7 +67,7 @@ export default function HowItWorks() {
                             How <span className="text-burn">Burnboard</span> Works
                         </h1>
                         <p className="text-lg text-muted-foreground">
-                            Transparent by design. Here's exactly what happens when you join.
+                            Transparent by design. Works with both Claude Code and OpenCode.
                         </p>
                     </div>
 
@@ -129,6 +129,18 @@ export default function HowItWorks() {
                                     2
                                 </div>
                                 <div className="flex-1 pt-1">
+                                    <h3 className="mb-1 font-mono font-medium">Choose your AI coding agent</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Select whether you use Claude Code, OpenCode, or both. The setup
+                                        will configure the appropriate telemetry for your choice.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-burn/20 font-mono text-sm font-bold text-burn">
+                                    3
+                                </div>
+                                <div className="flex-1 pt-1">
                                     <h3 className="mb-1 font-mono font-medium">Authenticate with GitHub</h3>
                                     <p className="text-sm text-muted-foreground">
                                         A browser window opens for you to sign in. We only request{' '}
@@ -139,25 +151,26 @@ export default function HowItWorks() {
                             </div>
                             <div className="flex gap-4">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-burn/20 font-mono text-sm font-bold text-burn">
-                                    3
+                                    4
                                 </div>
                                 <div className="flex-1 pt-1">
-                                    <h3 className="mb-1 font-mono font-medium">Shell environment configured</h3>
+                                    <h3 className="mb-1 font-mono font-medium">Telemetry configured</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        The script adds environment variables to your shell config
-                                        (~/.zshrc or ~/.bashrc) that enable Claude Code's built-in
-                                        OpenTelemetry export and point it to Burnboard.
+                                        <strong>Claude Code:</strong> Environment variables are added to enable
+                                        OpenTelemetry export.{' '}
+                                        <strong>OpenCode:</strong> A plugin is installed that hooks into
+                                        session events to capture usage metrics.
                                     </p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-burn/20 font-mono text-sm font-bold text-burn">
-                                    4
+                                    5
                                 </div>
                                 <div className="flex-1 pt-1">
                                     <h3 className="mb-1 font-mono font-medium">Telemetry flows automatically</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        When you use Claude Code, it sends usage metrics via OpenTelemetry
+                                        When you use your AI coding agent, usage metrics are sent
                                         to our API. Your stats appear on the leaderboard.
                                     </p>
                                 </div>
@@ -228,7 +241,7 @@ export default function HowItWorks() {
                             <div className="rounded-lg border bg-card p-5">
                                 <div className="mb-3 flex items-center gap-2">
                                     <Terminal className="h-5 w-5 text-muted-foreground" />
-                                    <h3 className="font-mono font-medium">OpenTelemetry (OTLP)</h3>
+                                    <h3 className="font-mono font-medium">Claude Code: OpenTelemetry (OTLP)</h3>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                     Claude Code has built-in support for exporting telemetry via{' '}
@@ -242,6 +255,35 @@ export default function HowItWorks() {
                                     </a>
                                     , an open standard for observability data. Burnboard simply receives
                                     this standard telemetry—we don't inject any custom code into Claude.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border bg-card p-5">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Terminal className="h-5 w-5 text-muted-foreground" />
+                                    <h3 className="font-mono font-medium">OpenCode: Plugin System</h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    OpenCode exposes usage data through its{' '}
+                                    <a
+                                        href="https://opencode.ai/docs/plugins"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-burn hover:underline"
+                                    >
+                                        plugin system
+                                    </a>
+                                    . The Burnboard plugin listens for message events and extracts token/cost
+                                    data from completed responses. You can{' '}
+                                    <a
+                                        href="https://github.com/davekiss/burnboard/blob/main/.opencode/plugin/burnboard.ts"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-burn hover:underline"
+                                    >
+                                        view the plugin source here
+                                    </a>
+                                    .
                                 </p>
                             </div>
 
@@ -358,10 +400,18 @@ export default function HowItWorks() {
                             </div>
 
                             <div className="rounded-lg border bg-card p-4">
-                                <h3 className="mb-2 font-mono text-sm font-medium">Is this affiliated with Anthropic?</h3>
+                                <h3 className="mb-2 font-mono text-sm font-medium">Is this affiliated with Anthropic or OpenCode?</h3>
                                 <p className="text-sm text-muted-foreground">
                                     No. Burnboard is an independent, community-built project.
-                                    It's not affiliated with or endorsed by Anthropic.
+                                    It's not affiliated with or endorsed by Anthropic or OpenCode.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border bg-card p-4">
+                                <h3 className="mb-2 font-mono text-sm font-medium">Does it work with other AI coding agents?</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Currently we support Claude Code and OpenCode. Both track token usage
+                                    and costs across all models. Support for other agents may be added in the future.
                                 </p>
                             </div>
                         </div>
@@ -373,7 +423,7 @@ export default function HowItWorks() {
                             Ready to join?
                         </h2>
                         <p className="mb-4 text-sm text-muted-foreground">
-                            Start tracking your Claude Code usage on the leaderboard
+                            Start tracking your AI coding usage on the leaderboard
                         </p>
                         <Link href="/">
                             <Button className="font-mono text-xs">

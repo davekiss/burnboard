@@ -20,6 +20,7 @@ Route::get('/auth/github/callback', [GitHubController::class, 'callback'])->name
 // Setup script
 Route::get('/join', [SetupController::class, 'script'])->name('setup.script');
 Route::get('/uninstall', [SetupController::class, 'uninstallScript'])->name('setup.uninstall');
+Route::get('/opencode-plugin', [SetupController::class, 'opencodePlugin'])->name('setup.opencode-plugin');
 Route::get('/device', [SetupController::class, 'deviceVerify'])->name('device.verify');
 Route::post('/device', [SetupController::class, 'deviceConfirm'])->name('device.confirm');
 Route::get('/device/success', function () {

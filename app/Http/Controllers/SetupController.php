@@ -43,22 +43,37 @@ else
 fi
 
 # Check if configured
-if ! grep -q "# Burnboard" "$SHELL_RC" 2>/dev/null; then
-    echo -e "${YELLOW}Burnboard is not configured in $SHELL_RC${NC}"
-    exit 0
+CONFIGURED=false
+if grep -q "# Burnboard" "$SHELL_RC" 2>/dev/null; then
+    CONFIGURED=true
 fi
 
-# Remove config
-sed -i.bak '/# Burnboard/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/CLAUDE_CODE_ENABLE_TELEMETRY/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_METRICS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_LOGS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_EXPORTER_OTLP_ENDPOINT/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_EXPORTER_OTLP_HEADERS/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_EXPORTER_OTLP_PROTOCOL/d' "$SHELL_RC" 2>/dev/null || true
-rm -f "${SHELL_RC}.bak" 2>/dev/null || true
+if [ "$CONFIGURED" = false ]; then
+    echo -e "${YELLOW}Burnboard is not configured in $SHELL_RC${NC}"
+fi
 
-echo -e "${GREEN}✓ Burnboard configuration removed from $SHELL_RC${NC}"
+# Remove shell config
+if [ "$CONFIGURED" = true ]; then
+    sed -i.bak '/# Burnboard/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/CLAUDE_CODE_ENABLE_TELEMETRY/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_METRICS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_LOGS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_EXPORTER_OTLP_ENDPOINT/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_EXPORTER_OTLP_HEADERS/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_EXPORTER_OTLP_PROTOCOL/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/BURNBOARD_API_TOKEN/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/BURNBOARD_ENDPOINT/d' "$SHELL_RC" 2>/dev/null || true
+    rm -f "${SHELL_RC}.bak" 2>/dev/null || true
+    echo -e "${GREEN}✓ Burnboard configuration removed from $SHELL_RC${NC}"
+fi
+
+# Remove OpenCode plugin
+OPENCODE_PLUGIN=~/.config/opencode/plugin/burnboard.ts
+if [ -f "$OPENCODE_PLUGIN" ]; then
+    rm -f "$OPENCODE_PLUGIN"
+    echo -e "${GREEN}✓ OpenCode plugin removed${NC}"
+fi
+
 echo ""
 echo -e "To complete uninstall:"
 echo -e "  1. Run: ${YELLOW}source $SHELL_RC${NC}"
@@ -77,7 +92,7 @@ BASH;
 #!/bin/bash
 
 # Burnboard Setup Script
-# Connect your Claude Code telemetry to the leaderboard
+# Connect your Claude Code or OpenCode telemetry to the leaderboard
 
 set -e
 
@@ -91,11 +106,19 @@ NC='\\033[0m' # No Color
 BOLD='\\033[1m'
 
 echo ""
-echo -e "\${CYAN}\${BOLD}🔥 Burnboard - Claude Code Leaderboard\${NC}"
+echo -e "\${CYAN}\${BOLD}🔥 Burnboard - AI Coding Leaderboard\${NC}"
 echo ""
 
 # Check if already configured
+ALREADY_CONFIGURED=false
 if grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.zshrc 2>/dev/null || grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.bashrc 2>/dev/null; then
+    ALREADY_CONFIGURED=true
+fi
+if grep -q "BURNBOARD_API_TOKEN" ~/.zshrc 2>/dev/null || grep -q "BURNBOARD_API_TOKEN" ~/.bashrc 2>/dev/null; then
+    ALREADY_CONFIGURED=true
+fi
+
+if [ "\$ALREADY_CONFIGURED" = true ]; then
     echo -e "\${YELLOW}Looks like you're already set up!\${NC}"
     echo ""
     read -p "Do you want to reconfigure? (y/N) " -n 1 -r < /dev/tty
@@ -106,7 +129,60 @@ if grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.zshrc 2>/dev/n
     fi
 fi
 
+# Detect which coding agent is installed
+CLAUDE_CODE_INSTALLED=false
+OPENCODE_INSTALLED=false
+
+if command -v claude &> /dev/null; then
+    CLAUDE_CODE_INSTALLED=true
+fi
+if command -v opencode &> /dev/null; then
+    OPENCODE_INSTALLED=true
+fi
+
+# Ask user which agent to configure
+echo -e "\${BOLD}Which AI coding agent do you use?\${NC}"
+echo ""
+
+if [ "\$CLAUDE_CODE_INSTALLED" = true ] && [ "\$OPENCODE_INSTALLED" = true ]; then
+    echo "  1) Claude Code (detected)"
+    echo "  2) OpenCode (detected)"
+    echo "  3) Both"
+    echo ""
+    read -p "Enter choice [1-3]: " -n 1 -r AGENT_CHOICE < /dev/tty
+    echo
+elif [ "\$CLAUDE_CODE_INSTALLED" = true ]; then
+    echo "  1) Claude Code (detected)"
+    echo "  2) OpenCode"
+    echo ""
+    read -p "Enter choice [1-2]: " -n 1 -r AGENT_CHOICE < /dev/tty
+    echo
+elif [ "\$OPENCODE_INSTALLED" = true ]; then
+    echo "  1) Claude Code"
+    echo "  2) OpenCode (detected)"
+    echo ""
+    read -p "Enter choice [1-2]: " -n 1 -r AGENT_CHOICE < /dev/tty
+    echo
+else
+    echo "  1) Claude Code"
+    echo "  2) OpenCode"
+    echo ""
+    read -p "Enter choice [1-2]: " -n 1 -r AGENT_CHOICE < /dev/tty
+    echo
+fi
+
+SETUP_CLAUDE=false
+SETUP_OPENCODE=false
+
+case \$AGENT_CHOICE in
+    1) SETUP_CLAUDE=true ;;
+    2) SETUP_OPENCODE=true ;;
+    3) SETUP_CLAUDE=true; SETUP_OPENCODE=true ;;
+    *) SETUP_CLAUDE=true ;;
+esac
+
 # Start device flow
+echo ""
 echo -e "\${BLUE}Starting GitHub authentication...\${NC}"
 echo ""
 
@@ -201,11 +277,14 @@ if [ -f "\$SHELL_RC" ]; then
     sed -i.bak '/OTEL_EXPORTER_OTLP_ENDPOINT/d' "\$SHELL_RC" 2>/dev/null || true
     sed -i.bak '/OTEL_EXPORTER_OTLP_HEADERS/d' "\$SHELL_RC" 2>/dev/null || true
     sed -i.bak '/OTEL_EXPORTER_OTLP_PROTOCOL/d' "\$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/BURNBOARD_API_TOKEN/d' "\$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/BURNBOARD_ENDPOINT/d' "\$SHELL_RC" 2>/dev/null || true
     rm -f "\${SHELL_RC}.bak" 2>/dev/null || true
 fi
 
-# Add new config
-cat >> "\$SHELL_RC" << EOF
+# Add configuration based on agent choice
+if [ "\$SETUP_CLAUDE" = true ]; then
+    cat >> "\$SHELL_RC" << EOF
 
 # Burnboard - Claude Code Telemetry
 export CLAUDE_CODE_ENABLE_TELEMETRY=1
@@ -215,6 +294,36 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=http/json
 export OTEL_EXPORTER_OTLP_ENDPOINT={$appUrl}/api
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer \$API_TOKEN"
 EOF
+    echo ""
+    echo -e "\${GREEN}✓ Claude Code telemetry configured\${NC}"
+fi
+
+if [ "\$SETUP_OPENCODE" = true ]; then
+    cat >> "\$SHELL_RC" << EOF
+
+# Burnboard - OpenCode Telemetry
+export BURNBOARD_API_TOKEN=\$API_TOKEN
+export BURNBOARD_ENDPOINT={$appUrl}/api
+EOF
+    echo ""
+    echo -e "\${GREEN}✓ OpenCode environment variables configured\${NC}"
+
+    # Set up OpenCode plugin
+    OPENCODE_PLUGIN_DIR=~/.config/opencode/plugin
+    mkdir -p "\$OPENCODE_PLUGIN_DIR"
+
+    # Download the burnboard plugin
+    echo ""
+    echo -e "\${BLUE}Installing OpenCode Burnboard plugin...\${NC}"
+    curl -sk "{$appUrl}/opencode-plugin" -o "\$OPENCODE_PLUGIN_DIR/burnboard.ts"
+
+    if [ -f "\$OPENCODE_PLUGIN_DIR/burnboard.ts" ]; then
+        echo -e "\${GREEN}✓ Plugin installed to \$OPENCODE_PLUGIN_DIR/burnboard.ts\${NC}"
+    else
+        echo -e "\${YELLOW}⚠ Plugin download failed. You can manually install from:\${NC}"
+        echo -e "  {$appUrl}/opencode-plugin"
+    fi
+fi
 
 echo ""
 echo -e "\${GREEN}✓ Configuration added to \$SHELL_RC\${NC}"
@@ -248,7 +357,7 @@ echo "\$LEADERBOARD" | grep -o '"github_username":"[^"]*"\\|"total_tokens":[0-9]
 done
 
 echo ""
-echo -e "\${YELLOW}Your stats will appear after your next Claude Code session.\${NC}"
+echo -e "\${YELLOW}Your stats will appear after your next coding session.\${NC}"
 echo ""
 echo -e "\${BOLD}To apply changes now, run:\${NC}"
 echo -e "  source \$SHELL_RC"
@@ -259,6 +368,15 @@ BASH;
 
         return response($script, 200)
             ->header('Content-Type', 'text/plain');
+    }
+
+    public function opencodePlugin(): Response
+    {
+        $pluginCode = file_get_contents(base_path('.opencode/plugin/burnboard.ts'));
+
+        return response($pluginCode, 200)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="burnboard.ts"');
     }
 
     public function deviceStart(): \Illuminate\Http\JsonResponse
