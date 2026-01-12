@@ -26,6 +26,7 @@ class User extends Authenticatable
         'github_username',
         'avatar_url',
         'api_token',
+        'coding_tools',
         'is_verified',
         'verification_score',
         'verified_at',
@@ -59,6 +60,28 @@ class User extends Authenticatable
         return $this->hasOne(GitHubVerification::class)->latestOfMany('fetched_at');
     }
 
+    public function badges(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+            ->withPivot(['earned_at', 'metadata'])
+            ->withTimestamps();
+    }
+
+    public function userBadges(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(UserBadge::class);
+    }
+
+    public function level(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(UserLevel::class);
+    }
+
+    public function leaderboardPositions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(LeaderboardPosition::class);
+    }
+
     public function generateApiToken(): string
     {
         $token = bin2hex(random_bytes(32));
@@ -81,6 +104,7 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
             'is_verified' => 'boolean',
             'verified_at' => 'datetime',
+            'coding_tools' => 'array',
         ];
     }
 }

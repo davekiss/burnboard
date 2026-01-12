@@ -80,4 +80,14 @@ class UserFactory extends Factory
             'verified_at' => now(),
         ]);
     }
+
+    /**
+     * Indicate that the user has an API token.
+     */
+    public function withApiToken(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'api_token' => bin2hex(random_bytes(32)),
+        ]);
+    }
 }

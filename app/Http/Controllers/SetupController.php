@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Services\LeaderboardService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class SetupController extends Controller
@@ -42,23 +41,36 @@ else
     SHELL_RC=~/.profile
 fi
 
-# Check if configured
-if ! grep -q "# Burnboard" "$SHELL_RC" 2>/dev/null; then
-    echo -e "${YELLOW}Burnboard is not configured in $SHELL_RC${NC}"
-    exit 0
+# Check if configured in shell
+SHELL_CONFIGURED=false
+if grep -q "# Burnboard" "$SHELL_RC" 2>/dev/null; then
+    SHELL_CONFIGURED=true
 fi
 
-# Remove config
-sed -i.bak '/# Burnboard/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/CLAUDE_CODE_ENABLE_TELEMETRY/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_METRICS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_LOGS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_EXPORTER_OTLP_ENDPOINT/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_EXPORTER_OTLP_HEADERS/d' "$SHELL_RC" 2>/dev/null || true
-sed -i.bak '/OTEL_EXPORTER_OTLP_PROTOCOL/d' "$SHELL_RC" 2>/dev/null || true
-rm -f "${SHELL_RC}.bak" 2>/dev/null || true
+# Remove shell config
+if [ "$SHELL_CONFIGURED" = true ]; then
+    sed -i.bak '/# Burnboard/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/CLAUDE_CODE_ENABLE_TELEMETRY/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_METRICS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_LOGS_EXPORTER/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_EXPORTER_OTLP_ENDPOINT/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_EXPORTER_OTLP_HEADERS/d' "$SHELL_RC" 2>/dev/null || true
+    sed -i.bak '/OTEL_EXPORTER_OTLP_PROTOCOL/d' "$SHELL_RC" 2>/dev/null || true
+    rm -f "${SHELL_RC}.bak" 2>/dev/null || true
+    echo -e "${GREEN}✓ Burnboard configuration removed from $SHELL_RC${NC}"
+else
+    echo -e "${YELLOW}No Burnboard configuration found in $SHELL_RC${NC}"
+fi
 
-echo -e "${GREEN}✓ Burnboard configuration removed from $SHELL_RC${NC}"
+# Check for OpenCode config
+OPENCODE_CONFIG=~/.config/opencode/opencode.jsonc
+if [ -f "$OPENCODE_CONFIG" ] && grep -q '"openTelemetry"' "$OPENCODE_CONFIG" 2>/dev/null; then
+    echo ""
+    echo -e "${YELLOW}Note: OpenCode config found at $OPENCODE_CONFIG${NC}"
+    echo -e "To disable telemetry, remove or set to false:"
+    echo '  "experimental": { "openTelemetry": false }'
+fi
+
 echo ""
 echo -e "To complete uninstall:"
 echo -e "  1. Run: ${YELLOW}source $SHELL_RC${NC}"
@@ -77,7 +89,7 @@ BASH;
 #!/bin/bash
 
 # Burnboard Setup Script
-# Connect your Claude Code telemetry to the leaderboard
+# Connect your Claude Code or OpenCode telemetry to the leaderboard
 
 set -e
 
@@ -91,11 +103,11 @@ NC='\\033[0m' # No Color
 BOLD='\\033[1m'
 
 echo ""
-echo -e "\${CYAN}\${BOLD}🔥 Burnboard - Claude Code Leaderboard\${NC}"
+echo -e "\${CYAN}\${BOLD}🔥 Burnboard - AI Coding Leaderboard\${NC}"
 echo ""
 
 # Check if already configured
-if grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.zshrc 2>/dev/null || grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.bashrc 2>/dev/null; then
+if grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard" ~/.zshrc 2>/dev/null || grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard" ~/.bashrc 2>/dev/null; then
     echo -e "\${YELLOW}Looks like you're already set up!\${NC}"
     echo ""
     read -p "Do you want to reconfigure? (y/N) " -n 1 -r < /dev/tty
@@ -105,6 +117,52 @@ if grep -q "OTEL_EXPORTER_OTLP_ENDPOINT.*burnboard\\|leaderai" ~/.zshrc 2>/dev/n
         exit 0
     fi
 fi
+
+# Detect installed tools
+CLAUDE_CODE_INSTALLED=false
+OPENCODE_INSTALLED=false
+
+if command -v claude &> /dev/null; then
+    CLAUDE_CODE_INSTALLED=true
+fi
+if command -v opencode &> /dev/null; then
+    OPENCODE_INSTALLED=true
+fi
+
+# Tool selection
+echo -e "\${BOLD}Which AI coding tool do you use?\${NC}"
+echo ""
+
+if [ "\$CLAUDE_CODE_INSTALLED" = true ] && [ "\$OPENCODE_INSTALLED" = true ]; then
+    echo "  1) Claude Code (detected)"
+    echo "  2) OpenCode (detected)"
+    echo "  3) Both"
+    read -p "Enter choice [1-3]: " -r TOOL_CHOICE < /dev/tty
+elif [ "\$CLAUDE_CODE_INSTALLED" = true ]; then
+    echo "  1) Claude Code (detected)"
+    echo "  2) OpenCode"
+    read -p "Enter choice [1-2]: " -r TOOL_CHOICE < /dev/tty
+elif [ "\$OPENCODE_INSTALLED" = true ]; then
+    echo "  1) Claude Code"
+    echo "  2) OpenCode (detected)"
+    read -p "Enter choice [1-2]: " -r TOOL_CHOICE < /dev/tty
+else
+    echo "  1) Claude Code"
+    echo "  2) OpenCode"
+    read -p "Enter choice [1-2]: " -r TOOL_CHOICE < /dev/tty
+fi
+
+SETUP_CLAUDE=false
+SETUP_OPENCODE=false
+
+case \$TOOL_CHOICE in
+    1) SETUP_CLAUDE=true ;;
+    2) SETUP_OPENCODE=true ;;
+    3) SETUP_CLAUDE=true; SETUP_OPENCODE=true ;;
+    *) SETUP_CLAUDE=true ;;
+esac
+
+echo ""
 
 # Start device flow
 echo -e "\${BLUE}Starting GitHub authentication...\${NC}"
@@ -204,8 +262,9 @@ if [ -f "\$SHELL_RC" ]; then
     rm -f "\${SHELL_RC}.bak" 2>/dev/null || true
 fi
 
-# Add new config
-cat >> "\$SHELL_RC" << EOF
+# Add configuration based on tool choice
+if [ "\$SETUP_CLAUDE" = true ]; then
+    cat >> "\$SHELL_RC" << EOF
 
 # Burnboard - Claude Code Telemetry
 export CLAUDE_CODE_ENABLE_TELEMETRY=1
@@ -215,6 +274,51 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=http/json
 export OTEL_EXPORTER_OTLP_ENDPOINT={$appUrl}/api
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer \$API_TOKEN"
 EOF
+    echo -e "\${GREEN}✓ Claude Code telemetry configured\${NC}"
+fi
+
+if [ "\$SETUP_OPENCODE" = true ]; then
+    # Add OTEL env vars for OpenCode
+    cat >> "\$SHELL_RC" << EOF
+
+# Burnboard - OpenCode Telemetry
+export OTEL_EXPORTER_OTLP_ENDPOINT={$appUrl}/api
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer \$API_TOKEN"
+EOF
+    echo -e "\${GREEN}✓ OpenCode environment configured\${NC}"
+
+    # Configure OpenCode's opencode.jsonc
+    OPENCODE_CONFIG_DIR=~/.config/opencode
+    OPENCODE_CONFIG="\$OPENCODE_CONFIG_DIR/opencode.jsonc"
+
+    mkdir -p "\$OPENCODE_CONFIG_DIR"
+
+    if [ -f "\$OPENCODE_CONFIG" ]; then
+        # Check if experimental.openTelemetry is already set
+        if grep -q '"openTelemetry"' "\$OPENCODE_CONFIG" 2>/dev/null; then
+            echo -e "\${YELLOW}Note: openTelemetry already configured in opencode.jsonc\${NC}"
+        else
+            # Add to existing config - try to add to experimental block or create it
+            # This is a simple approach - for complex configs, manual edit may be needed
+            echo -e "\${YELLOW}Please add to your opencode.jsonc:\${NC}"
+            echo ""
+            echo '  "experimental": {'
+            echo '    "openTelemetry": true'
+            echo '  }'
+            echo ""
+        fi
+    else
+        # Create new config file
+        cat > "\$OPENCODE_CONFIG" << 'OCEOF'
+{
+  "experimental": {
+    "openTelemetry": true
+  }
+}
+OCEOF
+        echo -e "\${GREEN}✓ Created \$OPENCODE_CONFIG with telemetry enabled\${NC}"
+    fi
+fi
 
 echo ""
 echo -e "\${GREEN}✓ Configuration added to \$SHELL_RC\${NC}"
@@ -248,7 +352,7 @@ echo "\$LEADERBOARD" | grep -o '"github_username":"[^"]*"\\|"total_tokens":[0-9]
 done
 
 echo ""
-echo -e "\${YELLOW}Your stats will appear after your next Claude Code session.\${NC}"
+echo -e "\${YELLOW}Your stats will appear after your next coding session.\${NC}"
 echo ""
 echo -e "\${BOLD}To apply changes now, run:\${NC}"
 echo -e "  source \$SHELL_RC"
@@ -265,7 +369,7 @@ BASH;
     {
         // Generate device code and user code
         $deviceCode = Str::random(40);
-        $userCode = strtoupper(Str::random(4) . '-' . Str::random(4));
+        $userCode = strtoupper(Str::random(4).'-'.Str::random(4));
 
         // Store in cache for 15 minutes
         cache()->put("device:{$deviceCode}", [
@@ -279,7 +383,7 @@ BASH;
         return response()->json([
             'device_code' => $deviceCode,
             'user_code' => $userCode,
-            'verification_uri' => config('app.url') . '/device',
+            'verification_uri' => config('app.url').'/device',
             'expires_in' => 900,
             'interval' => 5,
         ]);
@@ -325,7 +429,7 @@ BASH;
     public function deviceConfirm(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\Response|\Inertia\Response
     {
         $userCode = strtoupper(str_replace('-', '', $request->input('user_code', '')));
-        $userCode = substr($userCode, 0, 4) . '-' . substr($userCode, 4, 4);
+        $userCode = substr($userCode, 0, 4).'-'.substr($userCode, 4, 4);
 
         $deviceCode = cache()->get("user_code:{$userCode}");
 

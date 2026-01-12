@@ -16,6 +16,7 @@ class Metric extends Model
         'value',
         'model',
         'session_id',
+        'source',
         'recorded_at',
     ];
 
@@ -56,4 +57,9 @@ class Metric extends Model
     public const TYPE_ACTIVE_TIME = 'active_time';
 
     public const TYPE_TOOL_INVOCATIONS = 'tool_invocations';
+
+    // Source constants
+    public const SOURCE_CLAUDE_CODE = 'claude_code';
+
+    public const SOURCE_OPENCODE = 'opencode';
 }

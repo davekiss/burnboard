@@ -5,12 +5,18 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Metric;
 use App\Models\User;
+use App\Services\BadgeService;
+use App\Services\LevelService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class IngestController extends Controller
 {
+    public function __construct(
+        private BadgeService $badgeService,
+        private LevelService $levelService
+    ) {}
     // Map OTLP metric names to our internal types
     private const METRIC_MAP = [
         'claude_code.token.usage' => [
@@ -65,9 +71,13 @@ class IngestController extends Controller
             Metric::insert($metricsToInsert);
         }
 
+        // Process achievements after recording metrics
+        $achievements = $this->processAchievements($user, $metricsToInsert);
+
         return response()->json([
             'success' => true,
             'metrics_recorded' => count($metricsToInsert),
+            ...$achievements,
         ]);
     }
 
@@ -82,6 +92,115 @@ class IngestController extends Controller
         // For now, we acknowledge logs but don't store them
         // Events could be stored later for detailed analysis
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Ingest OTLP traces (spans) from OpenCode's AI SDK telemetry.
+     * Extracts token usage from span attributes and converts to metrics.
+     */
+    public function traces(Request $request): JsonResponse
+    {
+        $user = $this->authenticateUser($request);
+
+        if (! $user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $payload = $request->json()->all();
+        $resourceSpans = $payload['resourceSpans'] ?? [];
+
+        $metricsToInsert = [];
+        $now = now();
+
+        foreach ($resourceSpans as $resourceSpan) {
+            $scopeSpans = $resourceSpan['scopeSpans'] ?? [];
+
+            foreach ($scopeSpans as $scopeSpan) {
+                $spans = $scopeSpan['spans'] ?? [];
+
+                foreach ($spans as $span) {
+                    $parsed = $this->parseSpan($span, $user->id, $now);
+                    $metricsToInsert = array_merge($metricsToInsert, $parsed);
+                }
+            }
+        }
+
+        // Bulk insert metrics
+        if (! empty($metricsToInsert)) {
+            Metric::insert($metricsToInsert);
+        }
+
+        // Process achievements after recording metrics
+        $achievements = $this->processAchievements($user, $metricsToInsert);
+
+        return response()->json([
+            'success' => true,
+            'metrics_recorded' => count($metricsToInsert),
+            ...$achievements,
+        ]);
+    }
+
+    /**
+     * Parse an OTLP span and extract token usage metrics.
+     * AI SDK spans include attributes like ai.usage.promptTokens, ai.usage.completionTokens
+     */
+    private function parseSpan(array $span, int $userId, Carbon $now): array
+    {
+        $results = [];
+        $attributes = $this->parseAttributes($span['attributes'] ?? []);
+
+        // Extract model info
+        $modelId = $attributes['ai.model.id'] ?? $attributes['gen_ai.response.model'] ?? null;
+        $provider = $attributes['ai.model.provider'] ?? $attributes['gen_ai.system'] ?? null;
+        $model = $modelId ? ($provider ? "{$provider}/{$modelId}" : $modelId) : null;
+
+        // Use span ID as session ID for grouping
+        $traceId = $span['traceId'] ?? null;
+
+        // Parse timestamp from span
+        $timestamp = $span['startTimeUnixNano'] ?? $span['endTimeUnixNano'] ?? null;
+        $recordedAt = $timestamp
+            ? Carbon::createFromTimestampMs((int) ($timestamp / 1_000_000))
+            : $now;
+
+        // Extract token usage - check both AI SDK and OpenTelemetry conventions
+        $promptTokens = $attributes['ai.usage.promptTokens']
+            ?? $attributes['gen_ai.usage.input_tokens']
+            ?? null;
+        $completionTokens = $attributes['ai.usage.completionTokens']
+            ?? $attributes['gen_ai.usage.output_tokens']
+            ?? null;
+
+        // Only create metrics if we have token data
+        if ($promptTokens !== null && $promptTokens > 0) {
+            $results[] = [
+                'user_id' => $userId,
+                'metric_type' => Metric::TYPE_TOKENS_INPUT,
+                'value' => (int) $promptTokens,
+                'model' => $model,
+                'session_id' => $traceId,
+                'source' => Metric::SOURCE_OPENCODE,
+                'recorded_at' => $recordedAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if ($completionTokens !== null && $completionTokens > 0) {
+            $results[] = [
+                'user_id' => $userId,
+                'metric_type' => Metric::TYPE_TOKENS_OUTPUT,
+                'value' => (int) $completionTokens,
+                'model' => $model,
+                'session_id' => $traceId,
+                'source' => Metric::SOURCE_OPENCODE,
+                'recorded_at' => $recordedAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        return $results;
     }
 
     private function authenticateUser(Request $request): ?User
@@ -114,6 +233,7 @@ class IngestController extends Controller
 
             $sessionId = $attributes['session.id'] ?? null;
             $model = $attributes['model'] ?? null;
+            $source = $attributes['source'] ?? Metric::SOURCE_CLAUDE_CODE;
 
             // Handle metrics with type attribute (tokens, lines)
             if (is_array($mapping)) {
@@ -125,6 +245,7 @@ class IngestController extends Controller
                         $value,
                         $model,
                         $sessionId,
+                        $source,
                         $dataPoint,
                         $now
                     );
@@ -136,6 +257,7 @@ class IngestController extends Controller
                     $value,
                     $model,
                     $sessionId,
+                    $source,
                     $dataPoint,
                     $now
                 );
@@ -165,6 +287,7 @@ class IngestController extends Controller
         float|int $value,
         ?string $model,
         ?string $sessionId,
+        string $source,
         array $dataPoint,
         Carbon $now
     ): array {
@@ -180,6 +303,7 @@ class IngestController extends Controller
             'value' => $value,
             'model' => $model,
             'session_id' => $sessionId,
+            'source' => $source,
             'recorded_at' => $recordedAt,
             'created_at' => $now,
             'updated_at' => $now,
