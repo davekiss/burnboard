@@ -265,11 +265,11 @@ export default function Profile({
                                     </div>
                                     <div className="value-large">
                                         <span className="text-positive">
-                                            +{stats.lines_added.toLocaleString()}
+                                            +{formatTokens(stats.lines_added)}
                                         </span>
                                         <span className="mx-1 text-muted-foreground">/</span>
                                         <span className="text-negative">
-                                            -{stats.lines_removed.toLocaleString()}
+                                            -{formatTokens(stats.lines_removed)}
                                         </span>
                                     </div>
                                 </div>
