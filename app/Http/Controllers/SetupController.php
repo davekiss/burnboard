@@ -71,6 +71,14 @@ if [ -f "$OPENCODE_CONFIG" ] && grep -q '"openTelemetry"' "$OPENCODE_CONFIG" 2>/
     echo '  "experimental": { "openTelemetry": false }'
 fi
 
+# Check for Codex config
+CODEX_CONFIG=~/.codex/config.toml
+if [ -f "$CODEX_CONFIG" ] && grep -q '^\[otel\]' "$CODEX_CONFIG" 2>/dev/null; then
+    echo ""
+    echo -e "${YELLOW}Note: Codex config found at $CODEX_CONFIG${NC}"
+    echo -e "To disable telemetry, remove or comment out the [otel] section"
+fi
+
 echo ""
 echo -e "To complete uninstall:"
 echo -e "  1. Run: ${YELLOW}source $SHELL_RC${NC}"
@@ -89,7 +97,7 @@ BASH;
 #!/bin/bash
 
 # Burnboard Setup Script
-# Connect your Claude Code or OpenCode telemetry to the leaderboard
+# Connect your Claude Code, OpenCode, or OpenAI Codex telemetry to the leaderboard
 
 set -e
 
@@ -121,6 +129,7 @@ fi
 # Detect installed tools
 CLAUDE_CODE_INSTALLED=false
 OPENCODE_INSTALLED=false
+CODEX_INSTALLED=false
 
 if command -v claude &> /dev/null; then
     CLAUDE_CODE_INSTALLED=true
@@ -128,37 +137,70 @@ fi
 if command -v opencode &> /dev/null; then
     OPENCODE_INSTALLED=true
 fi
+if command -v codex &> /dev/null; then
+    CODEX_INSTALLED=true
+fi
 
 # Tool selection
-echo -e "\${BOLD}Which AI coding tool do you use?\${NC}"
+echo -e "\${BOLD}Which AI coding tool(s) do you use?\${NC}"
 echo ""
 
-if [ "\$CLAUDE_CODE_INSTALLED" = true ] && [ "\$OPENCODE_INSTALLED" = true ]; then
-    echo "  1) Claude Code (detected)"
-    echo "  2) OpenCode (detected)"
-    echo "  3) Both"
-    read -p "Enter choice [1-3]: " -r TOOL_CHOICE < /dev/tty
-elif [ "\$CLAUDE_CODE_INSTALLED" = true ]; then
-    echo "  1) Claude Code (detected)"
-    echo "  2) OpenCode"
-    read -p "Enter choice [1-2]: " -r TOOL_CHOICE < /dev/tty
-elif [ "\$OPENCODE_INSTALLED" = true ]; then
-    echo "  1) Claude Code"
-    echo "  2) OpenCode (detected)"
-    read -p "Enter choice [1-2]: " -r TOOL_CHOICE < /dev/tty
+# Build menu dynamically based on detected tools
+MENU_ITEM=1
+declare -A MENU_MAP
+
+# Claude Code
+if [ "\$CLAUDE_CODE_INSTALLED" = true ]; then
+    echo "  \$MENU_ITEM) Claude Code (detected)"
 else
-    echo "  1) Claude Code"
-    echo "  2) OpenCode"
-    read -p "Enter choice [1-2]: " -r TOOL_CHOICE < /dev/tty
+    echo "  \$MENU_ITEM) Claude Code"
 fi
+MENU_MAP[\$MENU_ITEM]="claude"
+((MENU_ITEM++))
+
+# OpenCode
+if [ "\$OPENCODE_INSTALLED" = true ]; then
+    echo "  \$MENU_ITEM) OpenCode (detected)"
+else
+    echo "  \$MENU_ITEM) OpenCode"
+fi
+MENU_MAP[\$MENU_ITEM]="opencode"
+((MENU_ITEM++))
+
+# OpenAI Codex
+if [ "\$CODEX_INSTALLED" = true ]; then
+    echo "  \$MENU_ITEM) OpenAI Codex (detected)"
+else
+    echo "  \$MENU_ITEM) OpenAI Codex"
+fi
+MENU_MAP[\$MENU_ITEM]="codex"
+((MENU_ITEM++))
+
+# All option
+echo "  \$MENU_ITEM) All installed tools"
+MENU_MAP[\$MENU_ITEM]="all"
+
+read -p "Enter choice [1-\$MENU_ITEM]: " -r TOOL_CHOICE < /dev/tty
 
 SETUP_CLAUDE=false
 SETUP_OPENCODE=false
+SETUP_CODEX=false
 
-case \$TOOL_CHOICE in
-    1) SETUP_CLAUDE=true ;;
-    2) SETUP_OPENCODE=true ;;
-    3) SETUP_CLAUDE=true; SETUP_OPENCODE=true ;;
+SELECTED=\${MENU_MAP[\$TOOL_CHOICE]}
+
+case \$SELECTED in
+    claude) SETUP_CLAUDE=true ;;
+    opencode) SETUP_OPENCODE=true ;;
+    codex) SETUP_CODEX=true ;;
+    all)
+        [ "\$CLAUDE_CODE_INSTALLED" = true ] && SETUP_CLAUDE=true
+        [ "\$OPENCODE_INSTALLED" = true ] && SETUP_OPENCODE=true
+        [ "\$CODEX_INSTALLED" = true ] && SETUP_CODEX=true
+        # If nothing installed, set up Claude Code by default
+        if [ "\$SETUP_CLAUDE" = false ] && [ "\$SETUP_OPENCODE" = false ] && [ "\$SETUP_CODEX" = false ]; then
+            SETUP_CLAUDE=true
+        fi
+        ;;
     *) SETUP_CLAUDE=true ;;
 esac
 
@@ -320,8 +362,49 @@ OCEOF
     fi
 fi
 
+if [ "\$SETUP_CODEX" = true ]; then
+    # Configure OpenAI Codex's config.toml
+    CODEX_CONFIG_DIR=~/.codex
+    CODEX_CONFIG="\$CODEX_CONFIG_DIR/config.toml"
+
+    mkdir -p "\$CODEX_CONFIG_DIR"
+
+    if [ -f "\$CODEX_CONFIG" ]; then
+        # Check if otel is already configured
+        if grep -q '^\[otel\]' "\$CODEX_CONFIG" 2>/dev/null; then
+            echo -e "\${YELLOW}Note: [otel] section already exists in config.toml\${NC}"
+            echo -e "\${YELLOW}Please update your ~/.codex/config.toml with:\${NC}"
+            echo ""
+            echo '[otel]'
+            echo 'exporter = { otlp-http = {'
+            echo "  endpoint = \"{$appUrl}/api/v1/logs\","
+            echo '  protocol = "json",'
+            echo "  headers = { \"Authorization\" = \"Bearer \$API_TOKEN\" }"
+            echo '}}'
+            echo ""
+        else
+            # Append otel config to existing file
+            cat >> "\$CODEX_CONFIG" << EOF
+
+# Burnboard - OpenAI Codex Telemetry
+[otel]
+exporter = { otlp-http = { endpoint = "{$appUrl}/api/v1/logs", protocol = "json", headers = { "Authorization" = "Bearer \$API_TOKEN" } } }
+EOF
+            echo -e "\${GREEN}✓ Codex telemetry configured in \$CODEX_CONFIG\${NC}"
+        fi
+    else
+        # Create new config file
+        cat > "\$CODEX_CONFIG" << EOF
+# Burnboard - OpenAI Codex Telemetry
+[otel]
+exporter = { otlp-http = { endpoint = "{$appUrl}/api/v1/logs", protocol = "json", headers = { "Authorization" = "Bearer \$API_TOKEN" } } }
+EOF
+        echo -e "\${GREEN}✓ Created \$CODEX_CONFIG with telemetry enabled\${NC}"
+    fi
+fi
+
 echo ""
-echo -e "\${GREEN}✓ Configuration added to \$SHELL_RC\${NC}"
+echo -e "\${GREEN}✓ Configuration complete\${NC}"
 echo ""
 
 # Show current leaderboard

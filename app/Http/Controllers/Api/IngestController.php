@@ -82,6 +82,10 @@ class IngestController extends Controller
         ]);
     }
 
+    /**
+     * Ingest OTLP logs from OpenAI Codex telemetry.
+     * Extracts token usage from codex.sse_event log records.
+     */
     public function logs(Request $request): JsonResponse
     {
         $user = $this->authenticateUser($request);
@@ -90,9 +94,118 @@ class IngestController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        // For now, we acknowledge logs but don't store them
-        // Events could be stored later for detailed analysis
-        return response()->json(['success' => true]);
+        $payload = $request->json()->all();
+        $resourceLogs = $payload['resourceLogs'] ?? [];
+
+        $metricsToInsert = [];
+        $now = now();
+
+        foreach ($resourceLogs as $resourceLog) {
+            $scopeLogs = $resourceLog['scopeLogs'] ?? [];
+
+            foreach ($scopeLogs as $scopeLog) {
+                $logRecords = $scopeLog['logRecords'] ?? [];
+
+                foreach ($logRecords as $logRecord) {
+                    $parsed = $this->parseLogRecord($logRecord, $user->id, $now);
+                    $metricsToInsert = array_merge($metricsToInsert, $parsed);
+                }
+            }
+        }
+
+        // Bulk insert metrics
+        if (! empty($metricsToInsert)) {
+            Metric::insert($metricsToInsert);
+        }
+
+        // Process achievements after recording metrics
+        $achievements = $this->processAchievements($user, $metricsToInsert);
+
+        return response()->json([
+            'success' => true,
+            'metrics_recorded' => count($metricsToInsert),
+            ...$achievements,
+        ]);
+    }
+
+    /**
+     * Parse an OTLP log record from Codex and extract token usage metrics.
+     * Codex emits codex.sse_event logs with input_token_count, output_token_count, etc.
+     */
+    private function parseLogRecord(array $logRecord, int $userId, Carbon $now): array
+    {
+        $results = [];
+        $attributes = $this->parseAttributes($logRecord['attributes'] ?? []);
+
+        // Only process codex.sse_event logs which contain token counts
+        $eventName = $attributes['event.name'] ?? $logRecord['body']['stringValue'] ?? null;
+        if ($eventName !== 'codex.sse_event') {
+            return $results;
+        }
+
+        // Extract model info
+        $model = $attributes['model'] ?? null;
+        if ($model) {
+            $model = "openai/{$model}";
+        }
+
+        // Use conversation.id as session ID for grouping
+        $sessionId = $attributes['conversation.id'] ?? null;
+
+        // Parse timestamp from log record (nanoseconds since epoch)
+        $timestamp = $logRecord['timeUnixNano'] ?? $logRecord['observedTimeUnixNano'] ?? null;
+        $recordedAt = $timestamp
+            ? Carbon::createFromTimestampMs((int) ($timestamp / 1_000_000))
+            : $now;
+
+        // Extract token counts from Codex sse_event
+        $inputTokens = $attributes['input_token_count'] ?? null;
+        $outputTokens = $attributes['output_token_count'] ?? null;
+        $cachedTokens = $attributes['cached_token_count'] ?? null;
+
+        if ($inputTokens !== null && $inputTokens > 0) {
+            $results[] = [
+                'user_id' => $userId,
+                'metric_type' => Metric::TYPE_TOKENS_INPUT,
+                'value' => (int) $inputTokens,
+                'model' => $model,
+                'session_id' => $sessionId,
+                'source' => Metric::SOURCE_CODEX,
+                'recorded_at' => $recordedAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if ($outputTokens !== null && $outputTokens > 0) {
+            $results[] = [
+                'user_id' => $userId,
+                'metric_type' => Metric::TYPE_TOKENS_OUTPUT,
+                'value' => (int) $outputTokens,
+                'model' => $model,
+                'session_id' => $sessionId,
+                'source' => Metric::SOURCE_CODEX,
+                'recorded_at' => $recordedAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if ($cachedTokens !== null && $cachedTokens > 0) {
+            $results[] = [
+                'user_id' => $userId,
+                'metric_type' => Metric::TYPE_TOKENS_CACHE_READ,
+                'value' => (int) $cachedTokens,
+                'model' => $model,
+                'session_id' => $sessionId,
+                'source' => Metric::SOURCE_CODEX,
+                'recorded_at' => $recordedAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        return $results;
     }
 
     /**

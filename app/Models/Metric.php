@@ -62,4 +62,6 @@ class Metric extends Model
     public const SOURCE_CLAUDE_CODE = 'claude_code';
 
     public const SOURCE_OPENCODE = 'opencode';
+
+    public const SOURCE_CODEX = 'openai_codex';
 }

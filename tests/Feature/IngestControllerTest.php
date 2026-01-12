@@ -246,14 +246,159 @@ describe('logs endpoint', function () {
         $response->assertUnauthorized();
     });
 
-    it('acknowledges logs without storing', function () {
+    it('ingests OTLP logs from Codex and extracts token metrics', function () {
         $user = User::factory()->withGithub()->withApiToken()->create();
 
-        $response = $this->postJson('/api/v1/logs', ['some' => 'data'], [
+        $payload = [
+            'resourceLogs' => [
+                [
+                    'scopeLogs' => [
+                        [
+                            'logRecords' => [
+                                [
+                                    'timeUnixNano' => (string) (now()->timestamp * 1_000_000_000),
+                                    'body' => ['stringValue' => 'codex.sse_event'],
+                                    'attributes' => [
+                                        ['key' => 'event.name', 'value' => ['stringValue' => 'codex.sse_event']],
+                                        ['key' => 'model', 'value' => ['stringValue' => 'codex-1']],
+                                        ['key' => 'conversation.id', 'value' => ['stringValue' => 'conv-abc123']],
+                                        ['key' => 'input_token_count', 'value' => ['intValue' => 2500]],
+                                        ['key' => 'output_token_count', 'value' => ['intValue' => 1200]],
+                                        ['key' => 'cached_token_count', 'value' => ['intValue' => 500]],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/api/v1/logs', $payload, [
             'Authorization' => "Bearer {$user->api_token}",
         ]);
 
         $response->assertOk();
-        $response->assertJson(['success' => true]);
+        $response->assertJson(['success' => true, 'metrics_recorded' => 3]);
+
+        // Check input tokens metric
+        $this->assertDatabaseHas('metrics', [
+            'user_id' => $user->id,
+            'metric_type' => Metric::TYPE_TOKENS_INPUT,
+            'value' => 2500,
+            'model' => 'openai/codex-1',
+            'session_id' => 'conv-abc123',
+            'source' => Metric::SOURCE_CODEX,
+        ]);
+
+        // Check output tokens metric
+        $this->assertDatabaseHas('metrics', [
+            'user_id' => $user->id,
+            'metric_type' => Metric::TYPE_TOKENS_OUTPUT,
+            'value' => 1200,
+            'model' => 'openai/codex-1',
+            'source' => Metric::SOURCE_CODEX,
+        ]);
+
+        // Check cached tokens metric
+        $this->assertDatabaseHas('metrics', [
+            'user_id' => $user->id,
+            'metric_type' => Metric::TYPE_TOKENS_CACHE_READ,
+            'value' => 500,
+            'model' => 'openai/codex-1',
+            'source' => Metric::SOURCE_CODEX,
+        ]);
+    });
+
+    it('ignores non-sse_event log records', function () {
+        $user = User::factory()->withGithub()->withApiToken()->create();
+
+        $payload = [
+            'resourceLogs' => [
+                [
+                    'scopeLogs' => [
+                        [
+                            'logRecords' => [
+                                [
+                                    'timeUnixNano' => (string) (now()->timestamp * 1_000_000_000),
+                                    'body' => ['stringValue' => 'codex.api_request'],
+                                    'attributes' => [
+                                        ['key' => 'event.name', 'value' => ['stringValue' => 'codex.api_request']],
+                                        ['key' => 'duration_ms', 'value' => ['intValue' => 1500]],
+                                    ],
+                                ],
+                                [
+                                    'timeUnixNano' => (string) (now()->timestamp * 1_000_000_000),
+                                    'body' => ['stringValue' => 'codex.user_prompt'],
+                                    'attributes' => [
+                                        ['key' => 'event.name', 'value' => ['stringValue' => 'codex.user_prompt']],
+                                        ['key' => 'prompt_length', 'value' => ['intValue' => 100]],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/api/v1/logs', $payload, [
+            'Authorization' => "Bearer {$user->api_token}",
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'metrics_recorded' => 0]);
+    });
+
+    it('handles logs without model info', function () {
+        $user = User::factory()->withGithub()->withApiToken()->create();
+
+        $payload = [
+            'resourceLogs' => [
+                [
+                    'scopeLogs' => [
+                        [
+                            'logRecords' => [
+                                [
+                                    'timeUnixNano' => (string) (now()->timestamp * 1_000_000_000),
+                                    'body' => ['stringValue' => 'codex.sse_event'],
+                                    'attributes' => [
+                                        ['key' => 'event.name', 'value' => ['stringValue' => 'codex.sse_event']],
+                                        ['key' => 'input_token_count', 'value' => ['intValue' => 1000]],
+                                        ['key' => 'output_token_count', 'value' => ['intValue' => 500]],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->postJson('/api/v1/logs', $payload, [
+            'Authorization' => "Bearer {$user->api_token}",
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'metrics_recorded' => 2]);
+
+        $this->assertDatabaseHas('metrics', [
+            'user_id' => $user->id,
+            'metric_type' => Metric::TYPE_TOKENS_INPUT,
+            'value' => 1000,
+            'model' => null,
+            'source' => Metric::SOURCE_CODEX,
+        ]);
+    });
+
+    it('handles empty resourceLogs gracefully', function () {
+        $user = User::factory()->withGithub()->withApiToken()->create();
+
+        $response = $this->postJson('/api/v1/logs', ['resourceLogs' => []], [
+            'Authorization' => "Bearer {$user->api_token}",
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'metrics_recorded' => 0]);
     });
 });
