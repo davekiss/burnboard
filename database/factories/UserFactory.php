@@ -56,4 +56,28 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => now(),
         ]);
     }
+
+    /**
+     * Indicate that the user has a GitHub account connected.
+     */
+    public function withGithub(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'github_id' => (string) fake()->unique()->numberBetween(100000, 9999999),
+            'github_username' => fake()->unique()->userName(),
+            'avatar_url' => 'https://avatars.githubusercontent.com/u/'.fake()->numberBetween(1, 99999999),
+        ]);
+    }
+
+    /**
+     * Indicate that the user is verified.
+     */
+    public function verified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_verified' => true,
+            'verification_score' => fake()->numberBetween(70, 100),
+            'verified_at' => now(),
+        ]);
+    }
 }

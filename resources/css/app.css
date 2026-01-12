@@ -418,6 +418,22 @@
     animation: pulse-glow 2s ease-in-out infinite;
 }
 
+.live-indicator.polling {
+    color: var(--burn);
+}
+
+.live-indicator.polling::before {
+    animation: spin 0.6s linear infinite;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    border-top-color: currentColor;
+    background: transparent;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* Flip Number Display */
 .flip-display {
     display: inline-flex;

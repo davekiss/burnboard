@@ -11,9 +11,10 @@ import {
     VerifiedBadge,
 } from '@/components/board';
 import { type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, usePoll } from '@inertiajs/react';
 import { Flame, Github, ArrowRight, Terminal, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface LeaderboardEntry {
     rank: number;
@@ -63,6 +64,13 @@ function formatCost(cost: number): string {
 export default function Leaderboard({ leaderboard, period, userStats }: Props) {
     const { auth } = usePage<SharedData>().props;
     const [copied, setCopied] = useState(false);
+    const [isPolling, setIsPolling] = useState(false);
+
+    // Poll for updates every 10 seconds
+    usePoll(10000, {
+        onStart: () => setIsPolling(true),
+        onFinish: () => setIsPolling(false),
+    });
 
     const handlePeriodChange = (newPeriod: string) => {
         router.get('/', { period: newPeriod }, { preserveState: true });
@@ -180,7 +188,7 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                     {/* Controls Row */}
                     <div className="mb-4 flex flex-col items-center justify-between gap-4 sm:flex-row">
                         <PeriodTabs value={period} onChange={handlePeriodChange} />
-                        <LiveIndicator />
+                        <LiveIndicator isPolling={isPolling} />
                     </div>
 
                     {/* The Board */}
@@ -213,78 +221,88 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                                     <SponsoredSlotPlaceholder className="mx-4 my-2" />
                                 )}
 
-                                {leaderboard.map((entry, index) => (
-                                    <Link
-                                        key={entry.github_username}
-                                        href={`/u/${entry.github_username}`}
-                                        className="board-row grid grid-cols-[4rem_1fr_7rem_6rem_8rem_5rem] gap-4"
-                                        style={{
-                                            animationDelay: `${index * 0.03}s`,
-                                        }}
-                                    >
-                                        {/* Rank */}
-                                        <div className="flex items-center">
-                                            <RankBadge rank={entry.rank} />
-                                        </div>
-
-                                        {/* User */}
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8 border" style={{ borderColor: 'var(--board-divider)' }}>
-                                                <AvatarImage src={entry.avatar_url} alt={entry.github_username} />
-                                                <AvatarFallback style={{ background: 'var(--board-row-alt)', color: 'var(--board-text-dim)' }}>
-                                                    {entry.github_username[0].toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <span
-                                                className="username truncate transition-colors hover:text-burn"
-                                                style={{ color: 'var(--board-text)' }}
+                                <AnimatePresence mode="popLayout">
+                                    {leaderboard.map((entry, index) => (
+                                        <motion.div
+                                            key={entry.github_username}
+                                            layout
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            transition={{
+                                                layout: { type: 'spring', stiffness: 350, damping: 30 },
+                                                opacity: { duration: 0.2 },
+                                            }}
+                                        >
+                                            <Link
+                                                href={`/u/${entry.github_username}`}
+                                                className="board-row grid grid-cols-[4rem_1fr_7rem_6rem_8rem_5rem] gap-4"
                                             >
-                                                {entry.github_username}
-                                            </span>
-                                            {entry.is_verified && (
-                                                <VerifiedBadge
-                                                    isVerified={entry.is_verified}
-                                                    score={entry.verification_score}
-                                                    size="sm"
-                                                />
-                                            )}
-                                        </div>
+                                                {/* Rank */}
+                                                <div className="flex items-center">
+                                                    <RankBadge rank={entry.rank} />
+                                                </div>
 
-                                        {/* Tokens */}
-                                        <div className="flex items-center justify-end">
-                                            <FlipNumber
-                                                value={entry.total_tokens}
-                                                format="compact"
-                                                className="text-sm"
-                                            />
-                                        </div>
+                                                {/* User */}
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-8 w-8 border" style={{ borderColor: 'var(--board-divider)' }}>
+                                                        <AvatarImage src={entry.avatar_url} alt={entry.github_username} />
+                                                        <AvatarFallback style={{ background: 'var(--board-row-alt)', color: 'var(--board-text-dim)' }}>
+                                                            {entry.github_username[0].toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span
+                                                        className="username truncate transition-colors hover:text-burn"
+                                                        style={{ color: 'var(--board-text)' }}
+                                                    >
+                                                        {entry.github_username}
+                                                    </span>
+                                                    {entry.is_verified && (
+                                                        <VerifiedBadge
+                                                            isVerified={entry.is_verified}
+                                                            score={entry.verification_score}
+                                                            size="sm"
+                                                        />
+                                                    )}
+                                                </div>
 
-                                        {/* Cost */}
-                                        <div className="flex items-center justify-end">
-                                            <span className="value-small" style={{ color: 'var(--board-text)' }}>
-                                                {formatCost(entry.total_cost)}
-                                            </span>
-                                        </div>
+                                                {/* Tokens */}
+                                                <div className="flex items-center justify-end">
+                                                    <FlipNumber
+                                                        value={entry.total_tokens}
+                                                        format="compact"
+                                                        className="text-sm"
+                                                    />
+                                                </div>
 
-                                        {/* Lines */}
-                                        <div className="hidden items-center justify-end gap-1 md:flex">
-                                            <span className="value-small text-positive">
-                                                +{entry.lines_added.toLocaleString()}
-                                            </span>
-                                            <span style={{ color: 'var(--board-text-dim)' }}>/</span>
-                                            <span className="value-small text-negative">
-                                                -{entry.lines_removed.toLocaleString()}
-                                            </span>
-                                        </div>
+                                                {/* Cost */}
+                                                <div className="flex items-center justify-end">
+                                                    <span className="value-small" style={{ color: 'var(--board-text)' }}>
+                                                        {formatCost(entry.total_cost)}
+                                                    </span>
+                                                </div>
 
-                                        {/* Commits */}
-                                        <div className="hidden items-center justify-end md:flex">
-                                            <span className="value-small" style={{ color: 'var(--board-text-dim)' }}>
-                                                {entry.commits}
-                                            </span>
-                                        </div>
-                                    </Link>
-                                ))}
+                                                {/* Lines */}
+                                                <div className="hidden items-center justify-end gap-1 md:flex">
+                                                    <span className="value-small text-positive">
+                                                        +{entry.lines_added.toLocaleString()}
+                                                    </span>
+                                                    <span style={{ color: 'var(--board-text-dim)' }}>/</span>
+                                                    <span className="value-small text-negative">
+                                                        -{entry.lines_removed.toLocaleString()}
+                                                    </span>
+                                                </div>
+
+                                                {/* Commits */}
+                                                <div className="hidden items-center justify-end md:flex">
+                                                    <span className="value-small" style={{ color: 'var(--board-text-dim)' }}>
+                                                        {entry.commits}
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
 
                                 {/* Sponsored slot position 2 */}
                                 {leaderboard.length > 8 && (
