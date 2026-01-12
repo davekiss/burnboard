@@ -33,19 +33,19 @@
         <title inertia>{{ config('app.name', 'Burnboard') }}</title>
 
         {{-- Open Graph / Social Media Meta Tags --}}
-        <meta name="description" content="The Claude Code leaderboard. See who's burning the most tokens and compete with the community.">
+        <meta name="description" content="AI coding telemetry tracker. Track your token usage across Claude Code, OpenCode, and OpenAI Codex.">
         <meta property="og:type" content="website">
         <meta property="og:url" content="{{ config('app.url') }}">
-        <meta property="og:title" content="Burnboard - Claude Code Leaderboard">
-        <meta property="og:description" content="The Claude Code leaderboard. See who's burning the most tokens and compete with the community.">
+        <meta property="og:title" content="Burnboard - AI Coding Tracker">
+        <meta property="og:description" content="AI coding telemetry tracker. Track your token usage across Claude Code, OpenCode, and OpenAI Codex.">
         <meta property="og:image" content="{{ config('app.url') }}/og-image.png">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
 
         {{-- Twitter Card --}}
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="Burnboard - Claude Code Leaderboard">
-        <meta name="twitter:description" content="The Claude Code leaderboard. See who's burning the most tokens and compete with the community.">
+        <meta name="twitter:title" content="Burnboard - AI Coding Tracker">
+        <meta name="twitter:description" content="AI coding telemetry tracker. Track your token usage across Claude Code, OpenCode, and OpenAI Codex.">
         <meta name="twitter:image" content="{{ config('app.url') }}/og-image.png">
 
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
