@@ -142,11 +142,11 @@ export default function HowItWorks() {
                                     3
                                 </div>
                                 <div className="flex-1 pt-1">
-                                    <h3 className="mb-1 font-mono font-medium">Shell environment configured</h3>
+                                    <h3 className="mb-1 font-mono font-medium">Tools configured automatically</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        The script adds environment variables to your shell config
-                                        (~/.zshrc or ~/.bashrc) that enable Claude Code's built-in
-                                        OpenTelemetry export and point it to Burnboard.
+                                        The script configures your selected tools: environment variables
+                                        for Claude Code and OpenCode, or config.toml for OpenAI Codex.
+                                        All use OpenTelemetry to send metrics to Burnboard.
                                     </p>
                                 </div>
                             </div>
@@ -157,8 +157,8 @@ export default function HowItWorks() {
                                 <div className="flex-1 pt-1">
                                     <h3 className="mb-1 font-mono font-medium">Telemetry flows automatically</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        When you use Claude Code, it sends usage metrics via OpenTelemetry
-                                        to our API. Your stats appear on the leaderboard.
+                                        When you use your AI coding tools, they send usage metrics via
+                                        OpenTelemetry to our API. Your stats appear on the leaderboard.
                                     </p>
                                 </div>
                             </div>
@@ -231,7 +231,7 @@ export default function HowItWorks() {
                                     <h3 className="font-mono font-medium">OpenTelemetry (OTLP)</h3>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Claude Code has built-in support for exporting telemetry via{' '}
+                                    Claude Code, OpenCode, and OpenAI Codex all support exporting telemetry via{' '}
                                     <a
                                         href="https://opentelemetry.io/"
                                         target="_blank"
@@ -241,7 +241,7 @@ export default function HowItWorks() {
                                         OpenTelemetry
                                     </a>
                                     , an open standard for observability data. Burnboard simply receives
-                                    this standard telemetry—we don't inject any custom code into Claude.
+                                    this standard telemetry—we don't inject any custom code into your tools.
                                 </p>
                             </div>
 
@@ -358,10 +358,10 @@ export default function HowItWorks() {
                             </div>
 
                             <div className="rounded-lg border bg-card p-4">
-                                <h3 className="mb-2 font-mono text-sm font-medium">Is this affiliated with Anthropic?</h3>
+                                <h3 className="mb-2 font-mono text-sm font-medium">Is this affiliated with Anthropic or OpenAI?</h3>
                                 <p className="text-sm text-muted-foreground">
                                     No. Burnboard is an independent, community-built project.
-                                    It's not affiliated with or endorsed by Anthropic.
+                                    It's not affiliated with or endorsed by Anthropic, OpenAI, or any AI company.
                                 </p>
                             </div>
                         </div>
@@ -373,7 +373,7 @@ export default function HowItWorks() {
                             Ready to join?
                         </h2>
                         <p className="mb-4 text-sm text-muted-foreground">
-                            Start tracking your Claude Code usage on the leaderboard
+                            Start tracking your AI coding tool usage on the leaderboard
                         </p>
                         <Link href="/">
                             <Button className="font-mono text-xs">
