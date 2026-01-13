@@ -120,7 +120,7 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                     {/* Hero Section */}
                     <div className="mb-8 text-center">
                         <h1 className="mb-3 font-mono text-3xl font-bold tracking-tight md:text-4xl">
-                            <span className="text-burn">AI Coding</span> Telemetry
+                            See who's <span className="text-burn">cookin'</span> with AI
                         </h1>
                         <p className="text-muted-foreground">
                             Track your token usage across Claude Code, OpenAI Codex, and OpenCode{' '}
