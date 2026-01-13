@@ -123,7 +123,8 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                             <span className="text-burn">AI Coding</span> Telemetry
                         </h1>
                         <p className="text-muted-foreground">
-                            Track your token usage across Claude Code, OpenCode, and OpenAI Codex
+                            Track your token usage across Claude Code, OpenAI Codex, and OpenCode{' '}
+                            <span className="text-xs opacity-60">(coming soon)</span>
                         </p>
                     </div>
 
@@ -320,7 +321,7 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                                 Start Tracking
                             </h2>
                             <p className="mb-4 text-sm text-muted-foreground">
-                                Run this command to connect Claude Code, OpenCode, or OpenAI Codex
+                                Run this command to connect Claude Code or OpenAI Codex
                             </p>
                             <div className="mx-auto flex max-w-lg items-center gap-2">
                                 <div className="code-block flex-1 text-left">

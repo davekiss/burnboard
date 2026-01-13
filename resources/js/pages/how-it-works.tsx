@@ -145,7 +145,7 @@ export default function HowItWorks() {
                                     <h3 className="mb-1 font-mono font-medium">Tools configured automatically</h3>
                                     <p className="text-sm text-muted-foreground">
                                         The script configures your selected tools: environment variables
-                                        for Claude Code and OpenCode, or config.toml for OpenAI Codex.
+                                        for Claude Code, or config.toml for OpenAI Codex.
                                         All use OpenTelemetry to send metrics to Burnboard.
                                     </p>
                                 </div>
@@ -231,7 +231,7 @@ export default function HowItWorks() {
                                     <h3 className="font-mono font-medium">OpenTelemetry (OTLP)</h3>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Claude Code, OpenCode, and OpenAI Codex all support exporting telemetry via{' '}
+                                    Claude Code, OpenAI Codex, and OpenCode <span className="opacity-60">(coming soon)</span> support exporting telemetry via{' '}
                                     <a
                                         href="https://opentelemetry.io/"
                                         target="_blank"
