@@ -145,54 +145,38 @@ fi
 echo -e "\${BOLD}Which AI coding tool(s) do you use?\${NC}"
 echo ""
 
-# Build menu dynamically based on detected tools
-MENU_ITEM=1
-declare -A MENU_MAP
-
-# Claude Code
+# Display menu
 if [ "\$CLAUDE_CODE_INSTALLED" = true ]; then
-    echo "  \$MENU_ITEM) Claude Code (detected)"
+    echo "  1) Claude Code (detected)"
 else
-    echo "  \$MENU_ITEM) Claude Code"
+    echo "  1) Claude Code"
 fi
-MENU_MAP[\$MENU_ITEM]="claude"
-((MENU_ITEM++))
 
-# OpenCode
 if [ "\$OPENCODE_INSTALLED" = true ]; then
-    echo "  \$MENU_ITEM) OpenCode (detected)"
+    echo "  2) OpenCode (detected)"
 else
-    echo "  \$MENU_ITEM) OpenCode"
+    echo "  2) OpenCode"
 fi
-MENU_MAP[\$MENU_ITEM]="opencode"
-((MENU_ITEM++))
 
-# OpenAI Codex
 if [ "\$CODEX_INSTALLED" = true ]; then
-    echo "  \$MENU_ITEM) OpenAI Codex (detected)"
+    echo "  3) OpenAI Codex (detected)"
 else
-    echo "  \$MENU_ITEM) OpenAI Codex"
+    echo "  3) OpenAI Codex"
 fi
-MENU_MAP[\$MENU_ITEM]="codex"
-((MENU_ITEM++))
 
-# All option
-echo "  \$MENU_ITEM) All installed tools"
-MENU_MAP[\$MENU_ITEM]="all"
+echo "  4) All installed tools"
 
-read -p "Enter choice [1-\$MENU_ITEM]: " -r TOOL_CHOICE < /dev/tty
+read -p "Enter choice [1-4]: " -r TOOL_CHOICE < /dev/tty
 
 SETUP_CLAUDE=false
 SETUP_OPENCODE=false
 SETUP_CODEX=false
 
-SELECTED=\${MENU_MAP[\$TOOL_CHOICE]}
-
-case \$SELECTED in
-    claude) SETUP_CLAUDE=true ;;
-    opencode) SETUP_OPENCODE=true ;;
-    codex) SETUP_CODEX=true ;;
-    all)
+case \$TOOL_CHOICE in
+    1) SETUP_CLAUDE=true ;;
+    2) SETUP_OPENCODE=true ;;
+    3) SETUP_CODEX=true ;;
+    4)
         [ "\$CLAUDE_CODE_INSTALLED" = true ] && SETUP_CLAUDE=true
         [ "\$OPENCODE_INSTALLED" = true ] && SETUP_OPENCODE=true
         [ "\$CODEX_INSTALLED" = true ] && SETUP_CODEX=true
