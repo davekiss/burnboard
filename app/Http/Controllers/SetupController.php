@@ -153,9 +153,9 @@ else
 fi
 
 if [ "\$OPENCODE_INSTALLED" = true ]; then
-    echo "  2) OpenCode (detected)"
+    echo "  2) OpenCode (detected) - coming soon"
 else
-    echo "  2) OpenCode"
+    echo "  2) OpenCode - coming soon"
 fi
 
 if [ "\$CODEX_INSTALLED" = true ]; then
@@ -304,46 +304,14 @@ EOF
 fi
 
 if [ "\$SETUP_OPENCODE" = true ]; then
-    # Add OTEL env vars for OpenCode
-    cat >> "\$SHELL_RC" << EOF
-
-# Burnboard - OpenCode Telemetry
-export OTEL_EXPORTER_OTLP_ENDPOINT={$appUrl}/api
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer \$API_TOKEN"
-EOF
-    echo -e "\${GREEN}✓ OpenCode environment configured\${NC}"
-
-    # Configure OpenCode's opencode.jsonc
-    OPENCODE_CONFIG_DIR=~/.config/opencode
-    OPENCODE_CONFIG="\$OPENCODE_CONFIG_DIR/opencode.jsonc"
-
-    mkdir -p "\$OPENCODE_CONFIG_DIR"
-
-    if [ -f "\$OPENCODE_CONFIG" ]; then
-        # Check if experimental.openTelemetry is already set
-        if grep -q '"openTelemetry"' "\$OPENCODE_CONFIG" 2>/dev/null; then
-            echo -e "\${YELLOW}Note: openTelemetry already configured in opencode.jsonc\${NC}"
-        else
-            # Add to existing config - try to add to experimental block or create it
-            # This is a simple approach - for complex configs, manual edit may be needed
-            echo -e "\${YELLOW}Please add to your opencode.jsonc:\${NC}"
-            echo ""
-            echo '  "experimental": {'
-            echo '    "openTelemetry": true'
-            echo '  }'
-            echo ""
-        fi
-    else
-        # Create new config file
-        cat > "\$OPENCODE_CONFIG" << 'OCEOF'
-{
-  "experimental": {
-    "openTelemetry": true
-  }
-}
-OCEOF
-        echo -e "\${GREEN}✓ Created \$OPENCODE_CONFIG with telemetry enabled\${NC}"
-    fi
+    echo ""
+    echo -e "\${YELLOW}OpenCode telemetry support is coming soon!\${NC}"
+    echo ""
+    echo -e "OpenTelemetry support for OpenCode is pending upstream approval."
+    echo -e "Track progress: \${CYAN}https://github.com/sst/opencode/pull/6629\${NC}"
+    echo ""
+    echo -e "Once merged, run this script again to configure OpenCode."
+    echo ""
 fi
 
 if [ "\$SETUP_CODEX" = true ]; then
