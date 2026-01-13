@@ -507,11 +507,7 @@ BASH;
         // Store the device code in session
         session(['device_code' => $deviceCode]);
 
-        // Return the GitHub URL to frontend for redirect
-        $redirectUrl = \Laravel\Socialite\Facades\Socialite::driver('github')->redirect()->getTargetUrl();
-
-        return \Inertia\Inertia::render('device-redirect', [
-            'redirectUrl' => $redirectUrl,
-        ]);
+        // Use Inertia::location() to force a full browser redirect for OAuth
+        return \Inertia\Inertia::location(route('auth.github'));
     }
 }
