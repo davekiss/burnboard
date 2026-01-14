@@ -21,6 +21,7 @@ import {
     Calendar,
     ArrowLeft,
     ExternalLink,
+    Twitter,
 } from 'lucide-react';
 
 interface Stats {
@@ -56,6 +57,7 @@ interface ModelBreakdown {
 interface ProfileUser {
     github_username: string;
     avatar_url: string;
+    twitter_handle: string | null;
     created_at: string;
     is_verified: boolean;
     verification_score: number;
@@ -196,6 +198,18 @@ export default function Profile({
                                     GitHub
                                     <ExternalLink className="h-3 w-3 opacity-50" />
                                 </a>
+                                {user.twitter_handle && (
+                                    <a
+                                        href={`https://x.com/${user.twitter_handle}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors"
+                                    >
+                                        <Twitter className="h-4 w-4" />
+                                        @{user.twitter_handle}
+                                        <ExternalLink className="h-3 w-3 opacity-50" />
+                                    </a>
+                                )}
                                 <span className="inline-flex items-center gap-1.5">
                                     <Calendar className="h-4 w-4" />
                                     Joined {formatDate(user.created_at)}

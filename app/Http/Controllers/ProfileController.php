@@ -29,6 +29,7 @@ class ProfileController extends Controller
             'user' => [
                 'github_username' => $user->github_username,
                 'avatar_url' => $user->avatar_url,
+                'twitter_handle' => $user->twitter_handle,
                 'created_at' => $user->created_at->toISOString(),
                 'is_verified' => (bool) $user->is_verified,
                 'verification_score' => (int) $user->verification_score,

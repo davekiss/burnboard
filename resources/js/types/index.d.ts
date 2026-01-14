@@ -38,6 +38,7 @@ export interface User {
     github_id?: string;
     github_username?: string;
     avatar_url?: string;
+    twitter_handle?: string | null;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     created_at: string;

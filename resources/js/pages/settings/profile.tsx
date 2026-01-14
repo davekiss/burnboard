@@ -91,6 +91,34 @@ export default function Profile({
                                     />
                                 </div>
 
+                                <div className="grid gap-2">
+                                    <Label htmlFor="twitter_handle">
+                                        X (Twitter) handle
+                                    </Label>
+
+                                    <div className="relative">
+                                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                            @
+                                        </span>
+                                        <Input
+                                            id="twitter_handle"
+                                            className="mt-1 block w-full pl-7"
+                                            defaultValue={
+                                                auth.user.twitter_handle ?? ''
+                                            }
+                                            name="twitter_handle"
+                                            autoComplete="off"
+                                            placeholder="username"
+                                            maxLength={15}
+                                        />
+                                    </div>
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.twitter_handle}
+                                    />
+                                </div>
+
                                 {mustVerifyEmail &&
                                     auth.user.email_verified_at === null && (
                                         <div>

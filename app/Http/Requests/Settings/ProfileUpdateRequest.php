@@ -27,6 +27,24 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+
+            'twitter_handle' => [
+                'nullable',
+                'string',
+                'max:15',
+                'regex:/^[A-Za-z0-9_]+$/',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'twitter_handle.regex' => 'Twitter handle can only contain letters, numbers, and underscores.',
+            'twitter_handle.max' => 'Twitter handle cannot be longer than 15 characters.',
         ];
     }
 }

@@ -83,3 +83,69 @@ test('correct password must be provided to delete account', function () {
 
     expect($user->fresh())->not->toBeNull();
 });
+
+test('user can update their twitter handle', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'twitter_handle' => 'testuser123',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    expect($user->refresh()->twitter_handle)->toBe('testuser123');
+});
+
+test('user can clear their twitter handle', function () {
+    $user = User::factory()->create(['twitter_handle' => 'oldhandle']);
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'twitter_handle' => '',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    expect($user->refresh()->twitter_handle)->toBeNull();
+});
+
+test('twitter handle must only contain valid characters', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('profile.edit'))
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'twitter_handle' => 'invalid@handle!',
+        ]);
+
+    $response->assertSessionHasErrors('twitter_handle');
+});
+
+test('twitter handle cannot exceed 15 characters', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('profile.edit'))
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'twitter_handle' => 'thishandleiswaytoolong',
+        ]);
+
+    $response->assertSessionHasErrors('twitter_handle');
+});

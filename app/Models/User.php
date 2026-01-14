@@ -25,6 +25,7 @@ class User extends Authenticatable
         'github_id',
         'github_username',
         'avatar_url',
+        'twitter_handle',
         'api_token',
         'coding_tools',
         'is_verified',
