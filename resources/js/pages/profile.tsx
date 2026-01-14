@@ -143,12 +143,12 @@ export default function Profile({
                                     </Button>
                                 </Link>
                             ) : (
-                                <Link href="/auth/github">
+                                <a href="/auth/github">
                                     <Button size="sm" className="font-mono text-xs">
                                         <Github className="mr-1.5 h-3.5 w-3.5" />
                                         Sign in
                                     </Button>
-                                </Link>
+                                </a>
                             )}
                         </div>
                     </div>

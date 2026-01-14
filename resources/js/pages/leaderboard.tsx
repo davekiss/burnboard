@@ -105,12 +105,12 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                                     </Button>
                                 </Link>
                             ) : (
-                                <Link href="/auth/github">
+                                <a href="/auth/github">
                                     <Button size="sm" className="font-mono text-xs">
                                         <Github className="mr-1.5 h-3.5 w-3.5" />
                                         Sign in
                                     </Button>
-                                </Link>
+                                </a>
                             )}
                         </div>
                     </div>
@@ -349,9 +349,9 @@ export default function Leaderboard({ leaderboard, period, userStats }: Props) {
                                 </Link>
                                 <span className="mx-2 opacity-30">|</span>
                                 Already joined?{' '}
-                                <Link href="/auth/github" className="text-burn hover:underline">
+                                <a href="/auth/github" className="text-burn hover:underline">
                                     Sign in
-                                </Link>
+                                </a>
                             </p>
                         </div>
                     )}
