@@ -1,7 +1,10 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import InputError from '@/components/input-error';
 import { ThemeToggle } from '@/components/board';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
 import {
     Check,
     Copy,
@@ -11,19 +14,38 @@ import {
     Terminal,
     AlertTriangle,
     Settings,
+    Twitter,
+    User,
 } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
     apiToken: string;
     hasMetrics: boolean;
+    twitterHandle: string | null;
 }
 
-export default function Dashboard({ apiToken, hasMetrics }: Props) {
+export default function Dashboard({ apiToken, hasMetrics, twitterHandle }: Props) {
     const { auth } = usePage<SharedData>().props;
     const [copied, setCopied] = useState(false);
     const [copiedEnv, setCopiedEnv] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [profileSaved, setProfileSaved] = useState(false);
+
+    const profileForm = useForm({
+        twitter_handle: twitterHandle ?? '',
+    });
+
+    const handleProfileSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        profileForm.patch('/dashboard/profile', {
+            preserveScroll: true,
+            onSuccess: () => {
+                setProfileSaved(true);
+                setTimeout(() => setProfileSaved(false), 2000);
+            },
+        });
+    };
 
     const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const setupCommand = `curl -sSL ${appUrl}/join | bash`;
@@ -166,6 +188,59 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ${apiToken}"`;
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Profile Settings */}
+                    <div className="mb-8 rounded-lg border border-border bg-card">
+                        <div className="border-b border-border p-4">
+                            <div className="flex items-center gap-2">
+                                <User className="h-5 w-5 text-burn" />
+                                <h2 className="font-mono font-semibold">Profile</h2>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Customize how others see you on your public profile
+                            </p>
+                        </div>
+                        <form onSubmit={handleProfileSubmit} className="p-4">
+                            <div className="max-w-sm">
+                                <Label htmlFor="twitter_handle" className="text-sm font-medium">
+                                    X (Twitter) handle
+                                </Label>
+                                <div className="relative mt-2">
+                                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                        @
+                                    </span>
+                                    <Input
+                                        id="twitter_handle"
+                                        className="pl-7"
+                                        value={profileForm.data.twitter_handle}
+                                        onChange={(e) => profileForm.setData('twitter_handle', e.target.value)}
+                                        placeholder="username"
+                                        maxLength={15}
+                                    />
+                                </div>
+                                <InputError className="mt-2" message={profileForm.errors.twitter_handle} />
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    This will be displayed on your public profile
+                                </p>
+                            </div>
+                            <div className="mt-4 flex items-center gap-3">
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={profileForm.processing}
+                                    className="font-mono text-xs"
+                                >
+                                    Save
+                                </Button>
+                                {profileSaved && (
+                                    <span className="flex items-center gap-1 text-sm text-positive">
+                                        <Check className="h-4 w-4" />
+                                        Saved
+                                    </span>
+                                )}
+                            </div>
+                        </form>
                     </div>
 
                     {/* Danger Zone */}

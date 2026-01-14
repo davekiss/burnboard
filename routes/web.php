@@ -4,7 +4,6 @@ use App\Http\Controllers\Auth\GitHubController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupController;
-use App\Services\LeaderboardService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -33,8 +32,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard', [
             'apiToken' => $user->api_token,
             'hasMetrics' => $user->metrics()->exists(),
+            'twitterHandle' => $user->twitter_handle,
         ]);
     })->name('dashboard');
+
+    Route::patch('dashboard/profile', function () {
+        $validated = request()->validate([
+            'twitter_handle' => ['nullable', 'string', 'max:15', 'regex:/^[A-Za-z0-9_]*$/'],
+        ], [
+            'twitter_handle.regex' => 'Twitter handle can only contain letters, numbers, and underscores.',
+            'twitter_handle.max' => 'Twitter handle cannot be longer than 15 characters.',
+        ]);
+
+        request()->user()->update([
+            'twitter_handle' => $validated['twitter_handle'] ?: null,
+        ]);
+
+        return back();
+    })->name('dashboard.profile.update');
 
     Route::delete('dashboard/stats', function () {
         request()->user()->metrics()->delete();
