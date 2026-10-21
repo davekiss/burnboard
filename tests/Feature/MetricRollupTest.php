@@ -147,7 +147,7 @@ describe('ingest', function () {
         });
 
         expect($queries)->toHaveCount(1)
-            ->and($queries[0])->toStartWith('insert into "metrics"');
+            ->and($queries[0])->toMatch('/^insert into [`"]metrics[`"]/');
     });
 
     it('still awards token badges from the rollups', function () {
