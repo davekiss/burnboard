@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\MetricRollupService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,17 @@ class Metric extends Model
             'value' => 'decimal:6',
             'recorded_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Metrics are append-only. Rows created one at a time are rolled up here;
+     * bulk inserts go through MetricRollupService::recordMetrics().
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Metric $metric) {
+            app(MetricRollupService::class)->rollUp([$metric->getAttributes()]);
+        });
     }
 
     public function user(): BelongsTo
