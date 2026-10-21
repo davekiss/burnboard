@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Badge;
 use App\Models\LeaderboardPosition;
 use App\Models\Metric;
+use App\Models\MetricTotal;
 use App\Models\User;
 use App\Models\UserBadge;
 use Illuminate\Support\Carbon;
@@ -79,30 +80,20 @@ class BadgeService
     }
 
     /**
-     * Calculate aggregated stats for badge checking.
+     * Calculate aggregated stats for badge checking from the rollup tables.
      *
      * @return array<string, mixed>
      */
     private function calculateUserStats(User $user): array
     {
-        $metrics = $user->metrics();
+        $totals = $user->metricTotals()->pluck('total', 'metric_type');
+        $total = fn (string $metricType): float => (float) ($totals[$metricType] ?? 0);
 
         // Token stats
-        $totalTokensInput = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_TOKENS_INPUT)
-            ->sum('value');
-
-        $totalTokensOutput = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_TOKENS_OUTPUT)
-            ->sum('value');
-
-        $totalTokensCacheRead = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_TOKENS_CACHE_READ)
-            ->sum('value');
-
-        $totalTokensCacheCreation = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_TOKENS_CACHE_CREATION)
-            ->sum('value');
+        $totalTokensInput = (int) $total(Metric::TYPE_TOKENS_INPUT);
+        $totalTokensOutput = (int) $total(Metric::TYPE_TOKENS_OUTPUT);
+        $totalTokensCacheRead = (int) $total(Metric::TYPE_TOKENS_CACHE_READ);
+        $totalTokensCacheCreation = (int) $total(Metric::TYPE_TOKENS_CACHE_CREATION);
 
         $totalTokens = $totalTokensInput + $totalTokensOutput + $totalTokensCacheRead + $totalTokensCacheCreation;
 
@@ -112,45 +103,21 @@ class BadgeService
             : 0;
 
         // Cost stats
-        $totalCost = (float) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_COST)
-            ->sum('value');
+        $totalCost = $total(Metric::TYPE_COST);
 
         // Code stats
-        $totalLinesAdded = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_LINES_ADDED)
-            ->sum('value');
-
-        $totalLinesRemoved = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_LINES_REMOVED)
-            ->sum('value');
-
-        $totalCommits = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_COMMITS)
-            ->sum('value');
-
-        $totalPullRequests = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_PULL_REQUESTS)
-            ->sum('value');
+        $totalLinesAdded = (int) $total(Metric::TYPE_LINES_ADDED);
+        $totalLinesRemoved = (int) $total(Metric::TYPE_LINES_REMOVED);
+        $totalCommits = (int) $total(Metric::TYPE_COMMITS);
+        $totalPullRequests = (int) $total(Metric::TYPE_PULL_REQUESTS);
 
         // Session stats
-        $totalSessions = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_SESSIONS)
-            ->sum('value');
-
-        $totalActiveMinutes = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_ACTIVE_TIME)
-            ->sum('value');
-
-        $totalToolInvocations = (int) $metrics->clone()
-            ->where('metric_type', Metric::TYPE_TOOL_INVOCATIONS)
-            ->sum('value');
+        $totalSessions = (int) $total(Metric::TYPE_SESSIONS);
+        $totalActiveMinutes = (int) $total(Metric::TYPE_ACTIVE_TIME);
+        $totalToolInvocations = (int) $total(Metric::TYPE_TOOL_INVOCATIONS);
 
         // Streak calculation
         $streak = $this->calculateStreak($user);
-
-        // Time-based stats
-        $timeStats = $this->calculateTimeStats($user);
 
         return [
             'total_tokens' => $totalTokens,
@@ -170,24 +137,24 @@ class BadgeService
             'total_tool_invocations' => $totalToolInvocations,
             'current_streak' => $streak['current'],
             'longest_streak' => $streak['longest'],
-            'night_sessions' => $timeStats['night_sessions'],
-            'early_sessions' => $timeStats['early_sessions'],
-            'weekend_sessions' => $timeStats['weekend_sessions'],
+            'night_sessions' => (int) $total(MetricTotal::TYPE_NIGHT_SESSIONS),
+            'early_sessions' => (int) $total(MetricTotal::TYPE_EARLY_SESSIONS),
+            'weekend_sessions' => (int) $total(MetricTotal::TYPE_WEEKEND_SESSIONS),
         ];
     }
 
     /**
-     * Calculate streak data for a user.
+     * Calculate streak data for a user from the days they recorded any metric.
      *
      * @return array{current: int, longest: int}
      */
     private function calculateStreak(User $user): array
     {
-        $activeDays = $user->metrics()
-            ->selectRaw('DATE(recorded_at) as active_date')
-            ->groupBy('active_date')
-            ->orderBy('active_date', 'desc')
-            ->pluck('active_date')
+        $activeDays = $user->metricDailyTotals()
+            ->toBase()
+            ->distinct()
+            ->orderBy('date', 'desc')
+            ->pluck('date')
             ->map(fn ($date) => Carbon::parse($date))
             ->values();
 
@@ -240,46 +207,6 @@ class BadgeService
         return [
             'current' => $currentStreak,
             'longest' => $longestStreak,
-        ];
-    }
-
-    /**
-     * Calculate time-based stats for badges.
-     *
-     * @return array{night_sessions: int, early_sessions: int, weekend_sessions: int}
-     */
-    private function calculateTimeStats(User $user): array
-    {
-        $metrics = $user->metrics()
-            ->where('metric_type', Metric::TYPE_SESSIONS)
-            ->get();
-
-        $nightSessions = 0;   // 10pm - 4am
-        $earlySessions = 0;   // 5am - 7am
-        $weekendSessions = 0; // Saturday or Sunday
-
-        foreach ($metrics as $metric) {
-            $recordedAt = $metric->recorded_at;
-            $hour = $recordedAt->hour;
-            $dayOfWeek = $recordedAt->dayOfWeek;
-
-            if ($hour >= 22 || $hour <= 4) {
-                $nightSessions += (int) $metric->value;
-            }
-
-            if ($hour >= 5 && $hour <= 7) {
-                $earlySessions += (int) $metric->value;
-            }
-
-            if ($dayOfWeek === Carbon::SATURDAY || $dayOfWeek === Carbon::SUNDAY) {
-                $weekendSessions += (int) $metric->value;
-            }
-        }
-
-        return [
-            'night_sessions' => $nightSessions,
-            'early_sessions' => $earlySessions,
-            'weekend_sessions' => $weekendSessions,
         ];
     }
 

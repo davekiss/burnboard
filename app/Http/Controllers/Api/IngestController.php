@@ -7,6 +7,7 @@ use App\Models\Metric;
 use App\Models\User;
 use App\Services\BadgeService;
 use App\Services\LevelService;
+use App\Services\MetricRollupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -15,7 +16,8 @@ class IngestController extends Controller
 {
     public function __construct(
         private BadgeService $badgeService,
-        private LevelService $levelService
+        private LevelService $levelService,
+        private MetricRollupService $metricRollupService
     ) {}
 
     // Map OTLP metric names to our internal types
@@ -67,10 +69,8 @@ class IngestController extends Controller
             }
         }
 
-        // Bulk insert metrics
-        if (! empty($metricsToInsert)) {
-            Metric::insert($metricsToInsert);
-        }
+        // Bulk insert metrics and update the rollups in one transaction
+        $this->metricRollupService->recordMetrics($metricsToInsert);
 
         // Process achievements after recording metrics
         $achievements = $this->processAchievements($user, $metricsToInsert);
@@ -113,10 +113,8 @@ class IngestController extends Controller
             }
         }
 
-        // Bulk insert metrics
-        if (! empty($metricsToInsert)) {
-            Metric::insert($metricsToInsert);
-        }
+        // Bulk insert metrics and update the rollups in one transaction
+        $this->metricRollupService->recordMetrics($metricsToInsert);
 
         // Process achievements after recording metrics
         $achievements = $this->processAchievements($user, $metricsToInsert);
@@ -239,10 +237,8 @@ class IngestController extends Controller
             }
         }
 
-        // Bulk insert metrics
-        if (! empty($metricsToInsert)) {
-            Metric::insert($metricsToInsert);
-        }
+        // Bulk insert metrics and update the rollups in one transaction
+        $this->metricRollupService->recordMetrics($metricsToInsert);
 
         // Process achievements after recording metrics
         $achievements = $this->processAchievements($user, $metricsToInsert);

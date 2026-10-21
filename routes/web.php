@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\GitHubController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SetupController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -52,7 +53,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard.profile.update');
 
     Route::delete('dashboard/stats', function () {
-        request()->user()->metrics()->delete();
+        $user = request()->user();
+
+        DB::transaction(function () use ($user) {
+            $user->metrics()->delete();
+            $user->metricTotals()->delete();
+            $user->metricDailyTotals()->delete();
+        });
 
         return back();
     })->name('dashboard.stats.delete');

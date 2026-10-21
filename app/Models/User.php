@@ -51,6 +51,16 @@ class User extends Authenticatable
         return $this->hasMany(Metric::class);
     }
 
+    public function metricTotals(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(MetricTotal::class);
+    }
+
+    public function metricDailyTotals(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(MetricDailyTotal::class);
+    }
+
     public function githubVerifications(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(GitHubVerification::class);
